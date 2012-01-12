@@ -37,7 +37,8 @@ def handle_packet(pkt):
     print data.encode('hex')
     try:
         ip = unnest_payload(data)
-        print str(ip).encode('hex')
+        #print str(ip).encode('hex')
+        print ip.__repr__()
         out.send(str(ip))
         print 'drop'
         pkt.drop()
