@@ -9,10 +9,11 @@ import socket
 import dpkt
 import dnet
 import time
+import random
 
 RELAY = socket.inet_aton('68.40.51.184')
 PROXY = socket.inet_aton('141.212.109.239')
-MTU = 500
+MTU = 496 # must be divisible by 8
 
 out = dnet.ip()
 
@@ -39,14 +40,13 @@ def print_and_accept(pkt):
         if pos+len(frag) < len(payload_bytes):
             cur_inner_ip_hdr.off |= dpkt.ip.IP_MF
 
-        udp = dpkt.udp.UDP(sport=1111, dport=2222, data=str(cur_inner_ip_hdr))
+        udp = dpkt.udp.UDP(sport=random.randint(0, 0xffff), dport=random.randint(1000,2000), data=str(cur_inner_ip_hdr))
         udp.ulen += len(udp.data)
         p = dpkt.ip.IP(src=PROXY, dst=RELAY, p=0x11, data=udp)
         p.len += len(p.data)
         pkt_out = str(p)
         print "sending %d bytes..." % len(pkt_out)
-        if (pos != 0):
-            time.sleep(0.001)
+        #time.sleep(0.5)
         print out.send(pkt_out)
 
     pkt.drop()
