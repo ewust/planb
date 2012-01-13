@@ -17,7 +17,30 @@ MTU = 496 # must be divisible by 8
 
 out = dnet.ip()
 
-def print_and_accept(pkt):
+routers = None
+router_index = None
+
+'''
+Returns a (dest, ttl_hop, mtu) tuple that we know to be a 
+router that will support TTL exceeded
+'''
+def get_router():
+    global routers, router_index
+    if routers == None:
+        print 'Initializing routers...'
+        import testbgp
+        f = open("bgp-prefixes", "r")
+        routers = testbgp.get_hops(f)
+        f.close()
+        print 'Done, using:'
+        for host, hop, real_mtu in routers:
+            print '  %s hop %d (MTU %d)' % (host, hop, real_mtu)
+        router_index = -1
+    router_index += 1
+    router_index %= len(routers)
+    return routers[router_index]
+
+def handle_pkt(pkt):
     bytes = pkt.get_payload()
     print pkt, len(bytes)
 
@@ -25,14 +48,22 @@ def print_and_accept(pkt):
                                      # (outer will be "proxy" -> relay)
     payload_bytes = str(inner_ip_hdr.data)
     
+    # choose a router per packet, because if one router is down, then
+    # only a few packets don't get through, rather than always a fragment
+    # for each packet (i.e. no packets get through)
+    host, hop, mtu = get_router()
+
+    mtu -= 20 # for IP header?
+
+    # construct a packet like:
     # IP ( UDP ( real_IP(...) ) ) 
-    # if fragments, also send
+    # if fragments, send:
     # IP ( UDP ( real_IP_frag1(...) ) ) 
     # IP ( UDP ( real_IP_frag2(...) ) ) .. etc
-    for pos in range(0,len(payload_bytes), MTU):
+    for pos in range(0,len(payload_bytes), mtu):
         
         # make an inner ip fragment
-        frag = payload_bytes[pos:pos+MTU]
+        frag = payload_bytes[pos:pos+mtu]
         cur_inner_ip_hdr = dpkt.ip.IP(str(inner_ip_hdr))
         cur_inner_ip_hdr.sum = 0
         cur_inner_ip_hdr.data = frag
@@ -42,7 +73,8 @@ def print_and_accept(pkt):
 
         udp = dpkt.udp.UDP(sport=random.randint(0, 0xffff), dport=random.randint(1000,2000), data=str(cur_inner_ip_hdr))
         udp.ulen += len(udp.data)
-        p = dpkt.ip.IP(src=PROXY, dst=RELAY, p=0x11, data=udp)
+
+        p = dpkt.ip.IP(src=PROXY, dst=host, ttl=hop, p=0x11, data=udp)
         p.len += len(p.data)
         pkt_out = str(p)
         print "sending %d bytes..." % len(pkt_out)
@@ -52,8 +84,9 @@ def print_and_accept(pkt):
     pkt.drop()
 
 nfqueue = NetfilterQueue()
-nfqueue.bind(1, print_and_accept)
+nfqueue.bind(1, handle_pkt)
 try:
+    get_router() 
     nfqueue.run()
 except KeyboardInterrupt:
     print
