@@ -40,9 +40,30 @@ def get_router():
     router_index %= len(routers)
     return routers[router_index]
 
+'''
+Given a payload (such as an IP (fragment) packet) that you'd LIKE to send 
+(but can't because its blocked), this will wrap your payload in a IP/UDP
+packet and send it toward your specified router. 
+
+It is the CALLERS responsibility to make sure they have the right MTU
+for this router
+'''
+def send_out_payload(payload, dest, hop):
+    udp = dpkt.udp.UDP(sport=random.randint(0, 0xffff), dport=random.randint(0,0xffff), 
+                    data=str(payload))
+    udp.ulen += len(udp.data)
+
+    p = dpkt.ip.IP(src=PROXY, dst=dest, ttl=hop, p=0x11, data=udp)
+    p.len += len(p.data)
+    pkt_out = str(p)
+    #print "sending %d bytes" % len(pkt_out
+    out.send(pkt_out)
+
+
+
 def handle_pkt(pkt):
     bytes = pkt.get_payload()
-    print pkt, len(bytes)
+    #print pkt, len(bytes)
 
     inner_ip_hdr = dpkt.ip.IP(bytes) # us -> proxy
                                      # (outer will be "proxy" -> relay)
@@ -71,15 +92,7 @@ def handle_pkt(pkt):
         if pos+len(frag) < len(payload_bytes):
             cur_inner_ip_hdr.off |= dpkt.ip.IP_MF
 
-        udp = dpkt.udp.UDP(sport=random.randint(0, 0xffff), dport=random.randint(1000,2000), data=str(cur_inner_ip_hdr))
-        udp.ulen += len(udp.data)
-
-        p = dpkt.ip.IP(src=PROXY, dst=host, ttl=hop, p=0x11, data=udp)
-        p.len += len(p.data)
-        pkt_out = str(p)
-        print "sending %d bytes..." % len(pkt_out)
-        #time.sleep(0.5)
-        print out.send(pkt_out)
+        send_out_payload(cur_inner_ip_hdr, host, hop)
 
     pkt.drop()
 
