@@ -22,9 +22,12 @@ def test_dest(dest, min_ttl=MIN_TTL, src_ip=SRC_IP):
     ip = dnet.ip()
     
     for ttl in range(min_ttl, MAX_TTL):
-        pkt = dpkt.ip.IP(src=socket.inet_aton(src_ip), dst=socket.inet_aton(dest), ttl=ttl, id=ttl, p=0x00)
-        pkt.data = "pkt %d " % ttl
-        pkt.data += 'A'*150
+        udp = dpkt.udp.UDP(sport=ttl, dport=2222)
+        udp.data = "pkt %d " % ttl
+        udp.data += 'A'*150
+        udp.ulen += len(udp.data)
+        pkt = dpkt.ip.IP(src=socket.inet_aton(src_ip), dst=socket.inet_aton(dest), ttl=ttl, id=ttl, p=0x11)
+        pkt.data = udp 
         pkt.len += len(str(pkt.data))
         ip.send(str(pkt))
         time.sleep(.001)
@@ -45,7 +48,7 @@ def test_dest(dest, min_ttl=MIN_TTL, src_ip=SRC_IP):
         inner_ip_pkt = icmp_pkt.data.data
         payload_data = inner_ip_pkt.data
         #print '%s (hop %d) sent %d bytes' % (addr[0], inner_ip_pkt.id, len(payload_data))
-        hops[inner_ip_pkt.id] = (addr[0], len(payload_data))
+        hops[payload_data.sport] = (addr[0], len(payload_data))
 
         if (addr[0] == dest):
             return hops
@@ -54,6 +57,8 @@ def test_dest(dest, min_ttl=MIN_TTL, src_ip=SRC_IP):
    
 
 def print_hops(hops, min_ttl=MIN_TTL):
+    if len(hops.keys()) == 0:
+        return 0
     for ttl in range(min_ttl, max(hops.keys())+1):
         if ttl in hops:
             addr, payload_len = hops[ttl]
