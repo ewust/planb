@@ -19,7 +19,7 @@ def unnest_payload(bytes):
     if not isinstance(ip.data, dpkt.icmp.ICMP):
         raise PacketError
     icmp = ip.data
-    if not isinstance(icmp.data, dpkt.icmp.ICMP.Unreach) and
+    if not isinstance(icmp.data, dpkt.icmp.ICMP.Unreach) and \
        not isinstance(icmp.data, dpkt.icmp.ICMP.TimeExceed):
         raise PacketError
     icmp_payload = icmp.data
