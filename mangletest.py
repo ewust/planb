@@ -92,7 +92,7 @@ def handle_pkt(pkt):
         if pos+len(frag) < len(payload_bytes):
             cur_inner_ip_hdr.off |= dpkt.ip.IP_MF
 
-        send_out_payload(cur_inner_ip_hdr, host, hop)
+        send_out_payload(cur_inner_ip_hdr, socket.inet_aton(host), hop)
 
     pkt.drop()
 
