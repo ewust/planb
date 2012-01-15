@@ -4,12 +4,13 @@
 # iptables -A planb -d 5.5.5.5 -j NFQUEUE --queue-num 1
 # iptables -A OUTPUT -j planb
 
-from netfilterqueue import NetfilterQueue
+#from netfilterqueue import NetfilterQueue
 import socket
 import dpkt
 import dnet
 import time
 import random
+import sys
 
 RELAY = socket.inet_aton('68.40.51.184')
 PROXY = socket.inet_aton('141.212.109.239')
@@ -30,7 +31,7 @@ def get_router():
         print 'Initializing routers...'
         import testbgp
         f = open("bgp-prefixes", "r")
-        routers = testbgp.get_hops(f)
+        routers = testbgp.get_hops(f, 15)
         f.close()
         print 'Done, using:'
         for host, hop, real_mtu in routers:
@@ -61,8 +62,7 @@ def send_out_payload(payload, dest, hop):
 
 
 
-def handle_pkt(pkt):
-    bytes = pkt.get_payload()
+def handle_pkt(bytes):
     #print pkt, len(bytes)
 
     inner_ip_hdr = dpkt.ip.IP(bytes) # us -> proxy
@@ -75,6 +75,7 @@ def handle_pkt(pkt):
     host, hop, mtu = get_router()
 
     mtu -= 20 # for IP header?
+    mtu -= 4 # still has to be divisible by 8!!
 
     # construct a packet like:
     # IP ( UDP ( real_IP(...) ) ) 
@@ -94,12 +95,27 @@ def handle_pkt(pkt):
 
         send_out_payload(cur_inner_ip_hdr, socket.inet_aton(host), hop)
 
-    pkt.drop()
 
-nfqueue = NetfilterQueue()
-nfqueue.bind(1, handle_pkt)
-try:
+
+if __name__ == "__main__":
+
+    if len(sys.argv) != 2:
+        print 'Usage:'
+        print
+        print '%s blocked_ip' % sys.argv[0]
+        sys.exit(1)
+
+    blocked_dest = sys.argv[1]
+    my_addr = socket.gethostbyname_ex(socket.gethostname())[2][0]
+
     get_router() 
-    nfqueue.run()
-except KeyboardInterrupt:
-    print
+    
+    tun = dnet.tun(dnet.addr(my_addr), dnet.addr(blocked_dest))
+
+    try:
+        while 1:
+            pkt = tun.recv()
+            handle_pkt(pkt)
+    
+    except KeyboardInterrupt:
+        print
