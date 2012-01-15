@@ -16,7 +16,7 @@ import select
 RELAY = socket.inet_aton('68.40.51.184')
 PROXY = socket.inet_aton('141.212.109.239')
 MTU = 496 # must be divisible by 8
-IFACE = "wlan0"
+IFACE = "eth0"
 
 out = dnet.ip()
 
