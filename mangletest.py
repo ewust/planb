@@ -132,7 +132,7 @@ if __name__ == "__main__":
                            e.data.dst == socket.inet_aton(my_real_addr):
                             e.data.dst = socket.inet_aton(my_addr)
                             e.data.sum = 0
-                            if (e.data.p == 0x11 or e.data.p == 0x07):
+                            if (e.data.p == 0x11 or e.data.p == 0x06):
                                 e.data.data.sum = 0
 
                             # you would think this is tun.send, but it's not! sigh, linux
