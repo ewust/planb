@@ -8,10 +8,17 @@ import time
 import sys
 
 SRC_IP = socket.gethostbyname_ex(socket.gethostname())[2][0]
+SPORT = 5555
 TIMEOUT = 1.2 #seconds
 MIN_TTL = 1
 MAX_TTL = 20
 icmp_sock = None
+
+# for planet lab: listen on the one udp port we send packets from
+# so we get their responses
+udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+udp_sock.bind(("", SPORT))
+
 
 
 def get_icmp_sock(timeout=TIMEOUT):
@@ -30,7 +37,7 @@ def test_dest(dest, min_ttl=MIN_TTL, src_ip=SRC_IP):
     ip = dnet.ip()
     
     for ttl in range(min_ttl, MAX_TTL):
-        udp = dpkt.udp.UDP(sport=ttl, dport=2222)
+        udp = dpkt.udp.UDP(sport=SPORT, dport=ttl)
         udp.data = "pkt %d " % ttl
         udp.data += 'A'*250
         udp.ulen += len(udp.data)
@@ -56,7 +63,7 @@ def test_dest(dest, min_ttl=MIN_TTL, src_ip=SRC_IP):
         inner_ip_pkt = icmp_pkt.data.data
         payload_data = inner_ip_pkt.data
         #print '%s (hop %d) sent %d bytes' % (addr[0], inner_ip_pkt.id, len(payload_data))
-        hops[payload_data.sport] = (addr[0], len(payload_data))
+        hops[payload_data.dport] = (addr[0], len(payload_data))
 
         if (addr[0] == dest):
             return hops
