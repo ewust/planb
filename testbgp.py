@@ -20,12 +20,12 @@ def get_random_host_in_network(network):
     return socket.inet_ntoa(struct.pack('!I', 
                     prefix | (~netmask & random.randint(0, 0xffffffff))))
 
-def get_hops(prefixes_file=sys.stdin):
+def get_hops(prefixes_file=sys.stdin, num_routers=5):
     hosts = [] 
     # For each network, pick a random host in it
     lines = prefixes_file.readlines()
     best_hops = {}
-    while len(best_hops.keys()) < 5:
+    while len(best_hops.keys()) < num_routers:
     
         index = random.randint(0, len(lines))
          
@@ -33,9 +33,9 @@ def get_hops(prefixes_file=sys.stdin):
      
         hops = testttl.test_dest(rand_host) 
     
-        #print '-----'
-        #print '%s' % rand_host
-        #testttl.print_hops(hops)
+        print '-----'
+        print '%s' % rand_host
+        testttl.print_hops(hops)
         
         payload_len_hop, payload_len = testttl.get_max_payload_len(hops)
         if (payload_len >= 64):
