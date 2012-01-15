@@ -141,7 +141,7 @@ if __name__ == "__main__":
                 elif sock == tun:
                     pkt = dpkt.ip.IP(tun.recv())
                     pkt.src = socket.inet_aton(my_real_addr)
-                    if pkt.p == 0x11 or pkt.p == 0x07:
+                    if pkt.p == 0x11 or pkt.p == 0x06:
                         pkt.sum = 0
                         pkt.data.sum = 0
                     
