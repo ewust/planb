@@ -80,7 +80,7 @@ def confirm_max_mtu(host, hop, reported_payload_len=1024, src_ip=SRC_IP):
     
     ip = dnet.ip()
     
-    udp = dpkt.udp.UDP(sport=hop, dport=2222)
+    udp = dpkt.udp.UDP(sport=SPORT, dport=hop)
     udp.data = 'A'*reported_payload_len
     udp.ulen += len(udp.data)
     pkt = dpkt.ip.IP(src=socket.inet_aton(src_ip), dst=socket.inet_aton(host), ttl=hop, id=hop, p=0x11)
