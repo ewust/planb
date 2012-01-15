@@ -112,7 +112,7 @@ def print_hops(hops, min_ttl=MIN_TTL):
 
 def get_max_payload_len(hops, min_ttl=MIN_TTL):
     if len(hops.keys()) == 0:
-        return (0, 0, 0)
+        return (0, 0)
 
     max_payload_len = 0
     max_payload_len_ttl = 0
