@@ -13,8 +13,10 @@ import random
 import sys
 import select
 
-RELAY = socket.inet_aton('68.40.51.184')
 PROXY = socket.inet_aton('141.212.109.239')
+LOCAL_PROXY = socket.inet_aton('10.78.0.5') # planet-lab: can only tap for destinations in 10.78.0.0/24
+                                            # we'll have to listen for this, and rewrite packets coming back
+                                            # from PROXY to be from LOCAL_PROXY before resending them to us
 MTU = 496 # must be divisible by 8
 IFACE = "eth0"
 
@@ -33,7 +35,7 @@ def get_router():
         print 'Initializing routers...'
         import testbgp
         f = open("bgp-prefixes", "r")
-        routers = testbgp.get_hops(f, 2)
+        routers = testbgp.get_hops(f, 6)
         f.close()
         print 'Done, using:'
         for host, hop, real_mtu in routers:
@@ -114,7 +116,7 @@ if __name__ == "__main__":
 
     get_router() 
     
-    tun = dnet.tun(dnet.addr(my_addr), dnet.addr(blocked_dest))
+    tun = dnet.tun(dnet.addr(my_addr), dnet.addr(blocked_dest))  # src and dest don't matter on planetlab
 
     raw_sock = socket.socket(socket.PF_PACKET, socket.SOCK_RAW)
     raw_sock.bind((IFACE, 0x0003))
@@ -131,6 +133,7 @@ if __name__ == "__main__":
                         if e.data.src == socket.inet_aton(blocked_dest) and \
                            e.data.dst == socket.inet_aton(my_real_addr):
                             e.data.dst = socket.inet_aton(my_addr)
+                            e.data.src = LOCAL_PROXY
                             e.data.sum = 0
                             if (e.data.p == 0x11 or e.data.p == 0x06):
                                 e.data.data.sum = 0
@@ -141,6 +144,7 @@ if __name__ == "__main__":
                 elif sock == tun:
                     pkt = dpkt.ip.IP(tun.recv())
                     pkt.src = socket.inet_aton(my_real_addr)
+                    pkt.dst = socket.inet_aton(blocked_dest)
                     if pkt.p == 0x11 or pkt.p == 0x06:
                         pkt.sum = 0
                         pkt.data.sum = 0
